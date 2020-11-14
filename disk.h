@@ -20,6 +20,7 @@ void dclose(DISK *disk);
 typedef disk_t disk_pointer;
 #define DNULL 0x0
 
+disk_pointer next_pointer(DISK *disk, disk_pointer dp);
 disk_pointer dalloc(DISK *disk);
 int copy_to_memory(DISK *disk, disk_pointer src, void *des);
 int copy_to_disk(void *src, size_t size, DISK *disk, disk_pointer des);

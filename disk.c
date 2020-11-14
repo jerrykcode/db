@@ -58,6 +58,10 @@ void dclose(DISK *disk) {
 	free(disk);
 }
 
+disk_pointer next_pointer(DISK *disk, disk_pointer dp) {
+    return dp + disk->block_size;
+}
+
 disk_pointer dalloc(DISK *disk) {
 	FILE *file = disk->file;
 	long fp_save = ftell(file); //save the file position when this function begin
