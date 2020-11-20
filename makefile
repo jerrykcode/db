@@ -1,5 +1,5 @@
 TARGET = db
-OBJS = disk.o table.o util.o
+OBJS = disk.o table.o util.o datatype.o
 
 CC = gcc
 
