@@ -1,4 +1,5 @@
 #include "datatype.h"
+#include <stdio.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -29,11 +30,12 @@ static void int_cpy_to_memory(void *memory, const char *intstr) {
     }
     
     if (sizeof(long) == 8 && (val > INT_MAX || val < INT_MIN)) {
-        errno = ERANGE;
+        errno = ERANGE;        
         return;
     }
     
     if (endptr == intstr) {
+        fprintf(stderr, "Error in strtol(): no digits were found\n");
         return;
     }
 
@@ -91,6 +93,7 @@ static void bigint_cpy_to_memory(void *memory, const char *bigintstr) {
         return;
     }
     if (endptr == bigintstr) {
+        fprintf(stderr, "Error in strtoll(): no digits were found\n");
         return;
     }
     

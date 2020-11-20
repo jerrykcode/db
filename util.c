@@ -45,6 +45,11 @@ char *map_get(Map *map, const char *key) {
     return NULL;
 }
 
+void map_get_all_keys(Map *map, char **keys) {
+    for (int i = 0; i < map_size(map); i++)
+        keys[i] = map->keys[i];
+}
+
 void map_get_all_values(Map *map, char **values) {
     for (int i = 0; i < map_size(map); i++)
         values[i] = map->values[i];

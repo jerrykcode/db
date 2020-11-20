@@ -18,6 +18,6 @@ Table *table_create(const char *path, const char *table_name, KeyList *list, Key
 Table *table_open(const char *path, const char *table_name);
 void table_close(Table *table);
 
-void insert(Table *table, KeyValueMap *map);
+void table_insert(Table *table, KeyValueMap *map);
 
 #endif 

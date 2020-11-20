@@ -1,7 +1,7 @@
 #include "table.h"
 #include "datatype.h"
 #include "frame.h"
-#include <error.h>
+#include <errno.h>
 
 static char *get_data_pathname(const char *path, const char *table_name) {
     size_t path_len = strlen(path);
@@ -166,8 +166,37 @@ void table_close(Table *table) {
     free(table);
 }
 
-void insert(Table *table, KeyValueMap *map) {
-
+void table_insert(Table *table, KeyValueMap *map) {
+    size_t block_size = table->data->block_size;
+    void *memory = malloc(block_size);
+    KeyList *list = table->list;
+    KeyTypeMap *kt_map = table->map;
+    size_t offset = 0;
+    for (int i = 0; i < list_size(list); i++) {
+        char *key_name = list_get(list, i);
+        char *key_type = map_get(kt_map, key_name);
+        DataType *data_type = get_data_type(key_type);
+        char *val = map_get(map, key_name);
+        if (val != NULL) {
+            errno = 0;
+            data_type->cpy_to_memory(memory + offset, val);
+            if (errno != 0) {
+                if (errno == ERANGE) fprintf(stderr, "Out of range value for column \'%s\'", key_name);
+                free(memory);
+                return;
+            }
+        }
+        else {
+            //This branch should never be reached at this time
+            //"Not null" is set default for any column at this time
+            fprintf(stderr, "Column \'%s\' can't be null!\n", key_name);
+            free(memory);
+            return;
+        }
+        offset += data_type->get_type_size();
+    }
+    disk_pointer dp = dalloc(table->data);
+    copy_to_disk(memory, offset, table->data, dp);
+    free(memory);
+    //key and dp will insert into a btree later
 }
-
-
