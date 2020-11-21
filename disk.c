@@ -62,6 +62,14 @@ disk_pointer next_pointer(DISK *disk, disk_pointer dp) {
     return dp + disk->block_size;
 }
 
+disk_pointer next_n_pointer(DISK *disk, disk_pointer dp, size_t n) {
+    return dp + n * disk->block_size;
+}
+
+disk_pointer data_start_pos() {
+    return DATA_OFFSET;
+}
+
 disk_pointer dalloc(DISK *disk) {
 	FILE *file = disk->file;
 	long fp_save = ftell(file); //save the file position when this function begin
@@ -72,17 +80,21 @@ disk_pointer dalloc(DISK *disk) {
 	return dp;
 }
 
+int copy_to_memory_s(DISK *disk, disk_pointer src, size_t num_blocks, void *des) {
+    FILE *file = disk->file;
+    long fp_save = ftell(file);
+    long offset = src;
+    fseek(file, offset, SEEK_SET);
+    size_t num_blocks_read = fread(des, disk->block_size, num_blocks, file);
+    if (num_blocks_read != num_blocks) {
+        if (!feof(file)) return -1;
+    } 
+    fseek(file, fp_save, SEEK_SET);
+    return num_blocks_read;
+}
+
 int copy_to_memory(DISK *disk, disk_pointer src, void *des) {
-	FILE *file = disk->file;
-	long fp_save = ftell(file);
-	long offset = src;
-	fseek(file, offset, SEEK_SET);
-	size_t num_blocks_read = fread(des, disk->block_size, 1, disk->file);
-	fseek(file, fp_save, SEEK_SET);
-	if (num_blocks_read != 1) {
-		return -1;
-	}
-	return 1;
+    return copy_to_memory_s(disk, src, 1, des);
 }
 
 int copy_to_disk(void *src, size_t size, DISK *disk, disk_pointer des) {

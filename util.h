@@ -42,6 +42,7 @@ char *map_get(Map *map, const char *key);
 
 void map_get_all_keys(Map *map, char **keys);
 void map_get_all_values(Map *map, char **values);
+void map_get_all_keys_and_values(Map *map, char **keys, char **values);
 
 void map_free(Map *map);
 #endif

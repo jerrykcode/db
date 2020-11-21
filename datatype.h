@@ -11,7 +11,10 @@ typedef struct {
     //virtual functions
     const char *(*get_type_name)(void);
     size_t (*get_type_size)(void);
+    int (*compare)(const void *, const void *);
+    void *(*convert_to_val)(const char *);
     void (*cpy_to_memory)(void *, const char *);
+    void (*print)(const void *);
 } DataType;
 
 DataType *int_data_type();

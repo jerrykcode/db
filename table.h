@@ -20,4 +20,6 @@ void table_close(Table *table);
 
 void table_insert(Table *table, KeyValueMap *map);
 
+void table_select(Table *table, KeyValueMap *example);
+
 #endif 

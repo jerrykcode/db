@@ -40,7 +40,8 @@ void map_put(Map *map, const char *key, const char *value) {
 
 char *map_get(Map *map, const char *key) {
     for (int i = 0; i < map_size(map); i++) {
-        if (strcmp(map->keys[i], key) == 0) return map->values[i];
+        if (strcmp(map->keys[i], key) == 0) 
+            return map->values[i];
     }
     return NULL;
 }
@@ -53,6 +54,13 @@ void map_get_all_keys(Map *map, char **keys) {
 void map_get_all_values(Map *map, char **values) {
     for (int i = 0; i < map_size(map); i++)
         values[i] = map->values[i];
+}
+
+void map_get_all_keys_and_values(Map *map, char **keys, char **values) {
+    for (int i = 0; i < map_size(map); i++) {
+        keys[i] = map->keys[i];
+        values[i] = map->values[i];        
+    }
 }
 
 void map_free(Map *map) {

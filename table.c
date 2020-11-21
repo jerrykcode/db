@@ -200,3 +200,75 @@ void table_insert(Table *table, KeyValueMap *map) {
     free(memory);
     //key and dp will insert into a btree later
 }
+
+static void print_row(Table *table, void *memory) {
+    size_t offset = 0;
+    for (int i = 0; i < list_size(table->list); i++) {
+        char *key = list_get(table->list, i);
+        DataType *type = get_data_type(map_get(table->map, key));
+        if (i) putchar(' ');
+        type->print(memory + offset);    
+        offset += type->get_type_size();
+    }
+    printf("\n");
+}
+
+void table_select(Table *table, KeyValueMap *example) {
+    DISK *data = table->data;
+    size_t block_size = data->block_size;
+    disk_pointer dp = data_start_pos();
+    static const size_t num_bytes_pre_IO = 4096;
+    size_t num_blocks, num_blocks_read;
+    if (block_size >= num_bytes_pre_IO)
+        num_blocks = 1;
+    else
+        num_blocks = num_bytes_pre_IO / block_size;
+    void *buffer = malloc(num_blocks * block_size);
+    char **keys = (char **)malloc(map_size(example) * sizeof(char *));
+    char **values = (char **)malloc(map_size(example) * sizeof(char *));
+    map_get_all_keys_and_values(example, keys, values);
+    
+    while (1) {
+        num_blocks_read = copy_to_memory_s(data, dp, num_blocks, buffer);
+        if (num_blocks_read < 0) {
+            fprintf(stderr, "Error in copy_to_memory_s\n");
+            free(buffer);
+            free(keys);
+            free(values);
+            return;
+        }
+        for (int i = 0; i < num_blocks_read; i++) {
+            size_t offset = i * block_size;
+            int flag = 1;
+            for (int j = 0; j < map_size(example); j++) {
+                DataType *type = get_data_type(map_get(table->map, keys[j]));                
+                void *p_val = malloc(type->get_type_size());
+                size_t key_offset = 0;
+                for (int k = 0; k < list_size(table->list); k++) {
+                    if (strcmp(list_get(table->list, k), keys[j]) == 0) break;
+                    key_offset += type_size(map_get(table->map, list_get(table->list, k)));
+                }
+                memcpy(p_val, buffer + offset + key_offset, type->get_type_size());
+                void *p_example_val = type->convert_to_val(values[j]);
+                int compare_res = type->compare(p_val, p_example_val);                
+                free(p_val);
+                free(p_example_val);
+                if (compare_res != 0) {
+                    flag = 0;
+                    break;
+                }
+            }
+            if (flag) {
+                print_row(table, buffer + offset);
+            }
+        }
+        if (num_blocks_read < num_blocks) {
+            break;
+        }
+        dp = next_n_pointer(data, dp, num_blocks);
+    }
+
+    free(buffer);
+    free(keys);
+    free(values);
+}
