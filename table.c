@@ -25,38 +25,38 @@ static char *get_frm_pathname(const char *path, const char *table_name) {
     return frm_pathname;
 }
 
-static void *cpy_to_buffer(const char *table_name, KeyList *list, KeyTypeMap *map, size_t *p_buffersize, size_t *p_blocksize) {
+static void *cpy_to_buffer(const char *table_name, ColNameList *list, ColNameTypeMap *map, size_t *p_buffersize, size_t *p_blocksize) {
     size_t table_name_size = strlen(table_name);
     if (table_name_size > FRM_TABLE_NAME_SIZE) {
         fprintf(stderr, "Table name:\'%s\' too long", table_name);
         return NULL;
     }
-    size_t num_keys = list_size(list);
-    *p_buffersize = FRM_SIZE(num_keys);
+    size_t num_cols = list_size(list);
+    *p_buffersize = FRM_SIZE(num_cols);
     void *buffer = malloc(*p_buffersize);
     memcpy(buffer + FRM_TABLE_NAME_OFFSET, (void *)table_name, table_name_size);
-    memcpy(buffer + FRM_NUM_KEYS_OFFSET, (void *)(&num_keys), FRM_NUM_KEYS_SIZE);
+    memcpy(buffer + FRM_NUM_COLS_OFFSET, (void *)(&num_cols), FRM_NUM_COLS_SIZE);
     *p_blocksize = 0;
-    for (int i = 0; i < num_keys; i++) {
+    for (int i = 0; i < num_cols; i++) {
         char *name = list_get(list, i);
         char *type = map_get(map, name);
         size_t name_size = strlen(name);
-        if (name_size > FRM_KEY_NAME_SIZE || !is_valid_datatype(type)) {
-            if (name_size > FRM_KEY_NAME_SIZE)
+        if (name_size > FRM_COL_NAME_SIZE || !is_valid_datatype(type)) {
+            if (name_size > FRM_COL_NAME_SIZE)
                 fprintf(stderr, "Key name: \'%s\' too long!\n", name);
             else
                 fprintf(stderr, "Key: \'%s\' with invalid data type: \'%s\'\n", name, type);
             free(buffer);
             return NULL;
         }
-        memcpy(buffer + FRM_KEY_NAME_OFFSET(i), name, name_size);
-        memcpy(buffer + FRM_KEY_TYPE_OFFSET(i), type, strlen(type));
+        memcpy(buffer + FRM_COL_NAME_OFFSET(i), name, name_size);
+        memcpy(buffer + FRM_COL_TYPE_OFFSET(i), type, strlen(type));
         *p_blocksize += type_size(type);
     }
     return buffer;
 }
 
-Table *table_create(const char *path, const char *table_name, KeyList *list, KeyTypeMap *map) {
+Table *table_create(const char *path, const char *table_name, ColNameList *list, ColNameTypeMap *map) {
 
     size_t buffer_size, block_size;
     void *buffer = cpy_to_buffer(table_name, list, map, &buffer_size, &block_size);
@@ -106,23 +106,23 @@ Table *table_open(const char *path, const char *table_name) {
         perror("fopen()");
         return NULL;
     }
-    fseek(frm, FRM_NUM_KEYS_OFFSET, SEEK_SET);
-    size_t num_keys;
-    fread(&num_keys, sizeof(size_t), 1, frm);
-    size_t buffer_size = FRM_SIZE(num_keys);
+    fseek(frm, FRM_NUM_COLS_OFFSET, SEEK_SET);
+    size_t num_cols;
+    fread(&num_cols, sizeof(size_t), 1, frm);
+    size_t buffer_size = FRM_SIZE(num_cols);
     void *buffer = malloc(buffer_size);
     fseek(frm, 0, SEEK_SET);
     fread(buffer, buffer_size, 1, frm);
     fclose(frm);
-    KeyList *list = new_list();
-    KeyTypeMap *map = new_map();
+    ColNameList *list = new_list();
+    ColNameTypeMap *map = new_map();
     size_t block_size;
-    for (int i = 0; i < num_keys; i++) {
-        char *name = (char *)malloc(FRM_KEY_NAME_SIZE);
-        memcpy(name, buffer + FRM_KEY_NAME_OFFSET(i), FRM_KEY_NAME_SIZE);
+    for (int i = 0; i < num_cols; i++) {
+        char *name = (char *)malloc(FRM_COL_NAME_SIZE);
+        memcpy(name, buffer + FRM_COL_NAME_OFFSET(i), FRM_COL_NAME_SIZE);
         list_add(list, name);
-        char *type = (char *)malloc(FRM_KEY_TYPE_SIZE);
-        memcpy(type, buffer + FRM_KEY_TYPE_OFFSET(i), FRM_KEY_TYPE_SIZE);
+        char *type = (char *)malloc(FRM_COL_TYPE_SIZE);
+        memcpy(type, buffer + FRM_COL_TYPE_OFFSET(i), FRM_COL_TYPE_SIZE);
         map_put(map, name, type);
     } 
     free(buffer);
@@ -131,12 +131,12 @@ Table *table_open(const char *path, const char *table_name) {
     free(data_pathname);
     if (data == NULL) {
         fprintf(stderr, "error in dopen()!\n");
-        for (int i = 0; i < num_keys; i++)
+        for (int i = 0; i < num_cols; i++)
             free(list_get(list, i));
         list_free(list);
-        char **types = (char **)malloc(num_keys * sizeof(char *));
+        char **types = (char **)malloc(num_cols * sizeof(char *));
         map_get_all_values(map, types);
-        for (int i = 0; i < num_keys; i++)
+        for (int i = 0; i < num_cols; i++)
             free(types[i]);
         free(types);
         map_free(map);
@@ -151,14 +151,14 @@ Table *table_open(const char *path, const char *table_name) {
 
 void table_close(Table *table) {
     List *list = table->list;
-    size_t num_keys = list_size(list);
+    size_t num_cols = list_size(list);
     Map *map = table->map;
-    for (int i = 0; i < num_keys; i++)
+    for (int i = 0; i < num_cols; i++)
         free(list_get(list, i));
     list_free(list);
-    char **types = (char **)malloc(num_keys * sizeof(char *));
+    char **types = (char **)malloc(num_cols * sizeof(char *));
     map_get_all_values(map, types);
-    for (int i = 0; i < num_keys; i++)
+    for (int i = 0; i < num_cols; i++)
         free(types[i]);
     free(types);
     map_free(map);
@@ -166,15 +166,15 @@ void table_close(Table *table) {
     free(table);
 }
 
-void table_insert(Table *table, KeyValueMap *map) {
+void table_insert(Table *table, ColNameValueMap *map) {
     size_t block_size = table->data->block_size;
     void *memory = malloc(block_size);
-    KeyList *list = table->list;
-    KeyTypeMap *kt_map = table->map;
+    ColNameList *list = table->list;
+    ColNameTypeMap *nt_map = table->map;
     size_t offset = 0;
     for (int i = 0; i < list_size(list); i++) {
         char *key_name = list_get(list, i);
-        char *key_type = map_get(kt_map, key_name);
+        char *key_type = map_get(nt_map, key_name);
         DataType *data_type = get_data_type(key_type);
         char *val = map_get(map, key_name);
         if (val != NULL) {
@@ -213,7 +213,7 @@ static void print_row(Table *table, void *memory) {
     printf("\n");
 }
 
-void table_select(Table *table, KeyValueMap *example) {
+void table_select(Table *table, ColNameValueMap *example) {
     DISK *data = table->data;
     size_t block_size = data->block_size;
     disk_pointer dp = data_start_pos();

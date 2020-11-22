@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define KeyList List
-#define KeyTypeMap Map
-#define KeyValueMap Map
+#define ColNameList List
+#define ColNameTypeMap Map
+#define ColNameValueMap Map
 
 #define CAPACITY 1024
 
