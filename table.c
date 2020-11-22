@@ -43,9 +43,9 @@ static void *cpy_to_buffer(const char *table_name, ColNameList *list, ColNameTyp
         size_t name_size = strlen(name);
         if (name_size > FRM_COL_NAME_SIZE || !is_valid_datatype(type)) {
             if (name_size > FRM_COL_NAME_SIZE)
-                fprintf(stderr, "Key name: \'%s\' too long!\n", name);
+                fprintf(stderr, "Column name: \'%s\' too long!\n", name);
             else
-                fprintf(stderr, "Key: \'%s\' with invalid data type: \'%s\'\n", name, type);
+                fprintf(stderr, "Column: \'%s\' with invalid data type: \'%s\'\n", name, type);
             free(buffer);
             return NULL;
         }
@@ -173,15 +173,15 @@ void table_insert(Table *table, ColNameValueMap *map) {
     ColNameTypeMap *nt_map = table->map;
     size_t offset = 0;
     for (int i = 0; i < list_size(list); i++) {
-        char *key_name = list_get(list, i);
-        char *key_type = map_get(nt_map, key_name);
-        DataType *data_type = get_data_type(key_type);
-        char *val = map_get(map, key_name);
+        char *col_name = list_get(list, i);
+        char *col_type = map_get(nt_map, col_name);
+        DataType *data_type = get_data_type(col_type);
+        char *val = map_get(map, col_name);
         if (val != NULL) {
             errno = 0;
             data_type->cpy_to_memory(memory + offset, val);
             if (errno != 0) {
-                if (errno == ERANGE) fprintf(stderr, "Out of range value for column \'%s\'", key_name);
+                if (errno == ERANGE) fprintf(stderr, "Out of range value for column \'%s\'", col_name);
                 free(memory);
                 return;
             }
@@ -189,7 +189,7 @@ void table_insert(Table *table, ColNameValueMap *map) {
         else {
             //This branch should never be reached at this time
             //"Not null" is set default for any column at this time
-            fprintf(stderr, "Column \'%s\' can't be null!\n", key_name);
+            fprintf(stderr, "Column \'%s\' can't be null!\n", col_name);
             free(memory);
             return;
         }
@@ -198,14 +198,14 @@ void table_insert(Table *table, ColNameValueMap *map) {
     disk_pointer dp = dalloc(table->data);
     copy_to_disk(memory, offset, table->data, dp);
     free(memory);
-    //key and dp will insert into a btree later
+    //col for index and dp will insert into a btree later
 }
 
 static void print_row(Table *table, void *memory) {
     size_t offset = 0;
     for (int i = 0; i < list_size(table->list); i++) {
-        char *key = list_get(table->list, i);
-        DataType *type = get_data_type(map_get(table->map, key));
+        char *col_name = list_get(table->list, i);
+        DataType *type = get_data_type(map_get(table->map, col_name));
         if (i) putchar(' ');
         type->print(memory + offset);    
         offset += type->get_type_size();
