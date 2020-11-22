@@ -11,10 +11,12 @@ clean :
 
 #test
 
-test : run_test_disk
+test : run_test_disk run_test_table
 	rm $(OBJS)
-	
+	rm *.frm
+	rm *.dat	
 
+# test disk
 test_disk : $(OBJS) test_disk.o
 	$(CC) -o $@ $^
 test_disk.o : test/test_disk.c
@@ -27,7 +29,15 @@ run_test_disk : test_disk test/test_disk.file
 	rm test_disk.o
 	rm $<
 
+# test table
 test_table : $(OBJS) test_table.o
 	$(CC) -o $@ $^
 test_table.o : test/test_table.c
 	$(CC) -c -o $@ $<
+
+run_test_table : test_table test/test_table.file
+	./$< > file	
+	-diff file test/test_table.file
+	rm file
+	rm test_table.o
+	rm $<

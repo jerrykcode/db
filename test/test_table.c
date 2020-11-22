@@ -23,8 +23,8 @@ static void map_free_all(Map *map) {
     map_free(map);
 }
 
-static void insert_1(Table *table) {
-    for (int i = 0; i < 1024; i++) {
+static void insert_1(Table *table, int n) {
+    for (int i = 0; i < n; i++) {
         KeyValueMap *map = new_map();
         map_put(map, char_pointer("id"), char_pointer("1000001"));
         map_put(map, char_pointer("num"), char_pointer("8888"));
@@ -40,8 +40,6 @@ static void insert_2(Table *table) {
     table_insert(table, map);
     map_free_all(map);
 }
-
-
 
 static void select_1(Table *table) {
     KeyValueMap *example = new_map();
@@ -66,16 +64,19 @@ int main() {
     map_put(map, char_pointer("id"), char_pointer("bigint"));
     map_put(map, char_pointer("num"), char_pointer("int"));
     Table *table = table_create("./", "tmp_table", list, map);
-    insert_1(table);
+    insert_1(table, 1);
     table_close(table);
     table = table_open("./", "tmp_table");
     for (int i = 0; i < 9; i++) {
         insert_2(table);
-        insert_1(table);
+        insert_1(table, 1);
     }
-    select_1(table);
-    printf("\n");
-    select_2(table);
+    select_1(table); //10 items with id = 1000001
+    select_2(table); //9 items with num = 8887
+    insert_1(table, 10240);
+    insert_2(table);
+    insert_1(table, 1024);
+    select_2(table); //10 items with num = 8887
     table_close(table);
     exit(0);
 }
