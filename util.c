@@ -9,7 +9,7 @@ size_t list_size(List *list) {
     return list->size;
 }
 
-void list_add(List *list, const char *key) {
+void list_add(List *list, char *key) {
     if (list->size < CAPACITY)
         list->arr[list->size++] = key;
 }
@@ -31,7 +31,7 @@ size_t map_size(Map *map) {
     return map->size;
 }
 
-void map_put(Map *map, const char *key, const char *value) {
+void map_put(Map *map, char *key, char *value) {
     if (map->size < CAPACITY) {
         map->keys[map->size] = key;
         map->values[map->size++] = value;

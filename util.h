@@ -19,7 +19,7 @@ List *new_list();
 
 size_t list_size(List *list);
 
-void list_add(List *list, const char *key);
+void list_add(List *list, char *key);
 
 char *list_get(List *list, size_t i);
 
@@ -36,7 +36,7 @@ Map *new_map();
 
 size_t map_size(Map *map);
 
-void map_put(Map *map, const char *key, const char *value);
+void map_put(Map *map, char *key, char *value);
 
 char *map_get(Map *map, const char *key);
 

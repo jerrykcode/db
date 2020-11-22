@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <limits.h>
+#include <string.h>
 
 /*
 
@@ -134,7 +135,7 @@ static void bigint_cpy_to_memory(void *memory, const char *bigintstr) {
     free(p_val);
 }
 
-static void bigint_print(void *memory) {
+static void bigint_print(const void *memory) {
     void *m = malloc(sizeof(long long));
     memcpy(m, memory, sizeof(long long));
     printf("%lld", *(long long *)m);
