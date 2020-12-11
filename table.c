@@ -134,11 +134,6 @@ Table *table_open(const char *path, const char *table_name) {
         for (int i = 0; i < num_cols; i++)
             free(list_get(list, i));
         list_free(list);
-        char **types = (char **)malloc(num_cols * sizeof(char *));
-        map_get_all_values(map, types);
-        for (int i = 0; i < num_cols; i++)
-            free(types[i]);
-        free(types);
         map_free(map);
         return NULL;
     }
@@ -156,11 +151,6 @@ void table_close(Table *table) {
     for (int i = 0; i < num_cols; i++)
         free(list_get(list, i));
     list_free(list);
-    char **types = (char **)malloc(num_cols * sizeof(char *));
-    map_get_all_values(map, types);
-    for (int i = 0; i < num_cols; i++)
-        free(types[i]);
-    free(types);
     map_free(map);
     dclose(table->data);
     free(table);

@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "rbtree.h"
 
 #define ColNameList List
 #define ColNameTypeMap Map
@@ -26,10 +27,7 @@ char *list_get(List *list, size_t i);
 void list_free(List *list);
 
 typedef struct {
-    //This structure will later be replaced by a map implemented by r-b tree
-    char *keys[CAPACITY];
-    char *values[CAPACITY];
-    size_t size;
+    PRBTree p_rbtree;
 } Map;
 
 Map *new_map();

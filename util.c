@@ -22,47 +22,86 @@ void list_free(List *list) {
     free(list);
 }
 
+typedef struct Pair {
+    char *key;
+    char *value;
+};
+
+int cmp(const void *a, const void *b) {
+    return strcmp(((struct Pair *)a)->key, ((struct Pair *)b)->key);
+}
+
 Map *new_map() {
     Map *map = (Map *)malloc(sizeof(Map));
-    map->size = 0;
+    map->p_rbtree = rbtree_create(cmp, sizeof(struct Pair), RBT_INSERT_REPLACE);
+	return map;
 }
 
 size_t map_size(Map *map) {
-    return map->size;
+    return rbtree_size(map->p_rbtree);
 }
 
 void map_put(Map *map, char *key, char *value) {
-    if (map->size < CAPACITY) {
-        map->keys[map->size] = key;
-        map->values[map->size++] = value;
-    }
+    struct Pair *p = malloc(sizeof(struct Pair));
+    p->key = key;
+    p->value = value;
+    rbtree_insert(map->p_rbtree, p);
 }
 
 char *map_get(Map *map, const char *key) {
-    for (int i = 0; i < map_size(map); i++) {
-        if (strcmp(map->keys[i], key) == 0) 
-            return map->values[i];
+    struct Pair *p = malloc(sizeof(struct Pair));
+    p->key = key;
+    void *res = rbtree_search(map->p_rbtree, p);
+    free(p);
+    if (res) {
+        return ((struct Pair *)res)->value;
     }
     return NULL;
 }
 
 void map_get_all_keys(Map *map, char **keys) {
-    for (int i = 0; i < map_size(map); i++)
-        keys[i] = map->keys[i];
-}
-
-void map_get_all_values(Map *map, char **values) {
-    for (int i = 0; i < map_size(map); i++)
-        values[i] = map->values[i];
-}
-
-void map_get_all_keys_and_values(Map *map, char **keys, char **values) {
-    for (int i = 0; i < map_size(map); i++) {
-        keys[i] = map->keys[i];
-        values[i] = map->values[i];        
+    rbtree_iterator_t *it = rbtree_iterator_create(map->p_rbtree);
+    size_t index = 0;
+    while (1) {
+        void *ptr = rbtree_iterator_current(it);
+        keys[index++] = ((struct Pair *)ptr)->key;
+        if (rbtree_iterator_has_next(it))
+            rbtree_iterator_next(it);
+        else
+            break;
     }
 }
 
+void map_get_all_values(Map *map, char **values) {
+    rbtree_iterator_t *it = rbtree_iterator_create(map->p_rbtree);
+    size_t index = 0;
+    while (1) {
+        void *ptr = rbtree_iterator_current(it);
+        values[index++] = ((struct Pair *)ptr)->value;
+        if (rbtree_iterator_has_next(it))
+            rbtree_iterator_next(it);
+        else
+            break;
+    }
+
+}
+
+void map_get_all_keys_and_values(Map *map, char **keys, char **values) {
+    rbtree_iterator_t *it = rbtree_iterator_create(map->p_rbtree);
+    size_t index = 0;
+    while (1) {
+        void *ptr = rbtree_iterator_current(it);
+        keys[index] = ((struct Pair *)ptr)->key;
+        values[index++] = ((struct Pair *)ptr)->value;
+        if (rbtree_iterator_has_next(it))
+            rbtree_iterator_next(it);
+        else
+            break;
+    }
+
+}
+
 void map_free(Map *map) {
+    rbtree_destroy(map->p_rbtree);
     free(map);
 }

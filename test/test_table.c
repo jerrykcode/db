@@ -9,17 +9,6 @@ static char * char_pointer(const char *str) {
 
 static void map_free_all(Map *map) {
     //free map
-    size_t num_cols = map_size(map);
-    char **keys = (char **)malloc(num_cols * sizeof(char *));
-    map_get_all_keys(map, keys);
-    for (int i = 0; i < num_cols; i++)
-        free(keys[i]);
-    free(keys);
-    char **types = (char **)malloc(num_cols * sizeof(char *));
-    map_get_all_values(map, types);
-    for (int i = 0; i < num_cols; i++)
-        free(types[i]);
-    free(types);
     map_free(map);
 }
 
