@@ -33,25 +33,25 @@ int cmp(const void *a, const void *b) {
 
 Map *new_map() {
     Map *map = (Map *)malloc(sizeof(Map));
-    map->p_rbtree = rbtree_create(cmp, sizeof(struct Pair), RBT_INSERT_REPLACE);
+    map->rbtree = rbtree_create(cmp, sizeof(struct Pair), RBT_SHALLOW_COPY | RBT_INSERT_REPLACE);
 	return map;
 }
 
 size_t map_size(Map *map) {
-    return rbtree_size(map->p_rbtree);
+    return rbtree_size(map->rbtree);
 }
 
 void map_put(Map *map, char *key, char *value) {
     struct Pair *p = malloc(sizeof(struct Pair));
     p->key = key;
     p->value = value;
-    rbtree_insert(map->p_rbtree, p);
+    rbtree_insert(map->rbtree, p);
 }
 
 char *map_get(Map *map, const char *key) {
     struct Pair *p = malloc(sizeof(struct Pair));
     p->key = key;
-    void *res = rbtree_search(map->p_rbtree, p);
+    void *res = rbtree_search(map->rbtree, p);
     free(p);
     if (res) {
         return ((struct Pair *)res)->value;
@@ -60,7 +60,7 @@ char *map_get(Map *map, const char *key) {
 }
 
 void map_get_all_keys(Map *map, char **keys) {
-    rbtree_iterator_t *it = rbtree_iterator_create(map->p_rbtree);
+    rbtree_iterator_t *it = rbtree_iterator_create(map->rbtree);
     size_t index = 0;
     while (1) {
         void *ptr = rbtree_iterator_current(it);
@@ -73,7 +73,7 @@ void map_get_all_keys(Map *map, char **keys) {
 }
 
 void map_get_all_values(Map *map, char **values) {
-    rbtree_iterator_t *it = rbtree_iterator_create(map->p_rbtree);
+    rbtree_iterator_t *it = rbtree_iterator_create(map->rbtree);
     size_t index = 0;
     while (1) {
         void *ptr = rbtree_iterator_current(it);
@@ -87,7 +87,7 @@ void map_get_all_values(Map *map, char **values) {
 }
 
 void map_get_all_keys_and_values(Map *map, char **keys, char **values) {
-    rbtree_iterator_t *it = rbtree_iterator_create(map->p_rbtree);
+    rbtree_iterator_t *it = rbtree_iterator_create(map->rbtree);
     size_t index = 0;
     while (1) {
         void *ptr = rbtree_iterator_current(it);
@@ -102,6 +102,6 @@ void map_get_all_keys_and_values(Map *map, char **keys, char **values) {
 }
 
 void map_free(Map *map) {
-    rbtree_destroy(map->p_rbtree);
+    rbtree_destroy(map->rbtree);
     free(map);
 }

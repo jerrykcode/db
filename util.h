@@ -27,7 +27,7 @@ char *list_get(List *list, size_t i);
 void list_free(List *list);
 
 typedef struct {
-    PRBTree p_rbtree;
+    rbtree_t *rbtree;
 } Map;
 
 Map *new_map();
