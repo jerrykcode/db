@@ -148,8 +148,6 @@ void table_close(Table *table) {
     List *list = table->list;
     size_t num_cols = list_size(list);
     Map *map = table->map;
-    for (int i = 0; i < num_cols; i++)
-        free(list_get(list, i));
     list_free(list);
     map_free(map);
     dclose(table->data);

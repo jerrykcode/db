@@ -46,12 +46,14 @@ static void select_2(Table *table) {
 
 int main() {
     ColNameList *list = new_list();
-    
-    list_add(list, char_pointer("id"));
-    list_add(list, char_pointer("num"));
+
+    char *id = char_pointer("id");
+    char *num = char_pointer("num");
+    list_add(list, id);
+    list_add(list, num);
     ColNameTypeMap *map = new_map();
-    map_put(map, char_pointer("id"), char_pointer("bigint"));
-    map_put(map, char_pointer("num"), char_pointer("int"));
+    map_put(map, id, char_pointer("bigint"));
+    map_put(map, num, char_pointer("int"));
     Table *table = table_create("./", "tmp_table", list, map);
     insert_1(table, 1);
     table_close(table);
@@ -66,6 +68,7 @@ int main() {
     insert_2(table);
     insert_1(table, 1024);
     select_2(table); //10 items with num = 8887
+
     table_close(table);
     exit(0);
 }

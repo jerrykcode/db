@@ -22,29 +22,32 @@ typedef struct TNode {
 typedef struct RBTree {
     PTNode root;
     int (*compare)(const void *, const void *);
+    void (*destroy)(void *);
 	size_t key_size;
     int flags;
     size_t num_nodes;
 } *PRBTree;
 
-rbtree_t *rbtree_create(int (*compare)(const void *, const void *), size_t key_size, int flags) {
+rbtree_t *rbtree_create(int (*compare)(const void *, const void *), void (*destroy)(void *), size_t key_size, int flags) {
     PRBTree rbtree = (PRBTree)malloc(sizeof(struct RBTree));
     if (rbtree == NULL) {
         return NULL;
     }
     rbtree->root = NULL;
     rbtree->compare = compare;
+    rbtree->destroy = destroy;
 	rbtree->key_size = key_size;
     rbtree->flags = flags;
     rbtree->num_nodes = 0;
     return rbtree;
 }
 
-static void delete_node(PTNode node) {
+static void delete_node(PRBTree rbtree, PTNode node) {
     if (node == NULL)
         return;
-    delete_node(node->left);
-    delete_node(node->right);
+    delete_node(rbtree, node->left);
+    delete_node(rbtree, node->right);
+    rbtree->destroy(node->key);
     free(node);
 }
 
@@ -52,7 +55,7 @@ void rbtree_destroy(rbtree_t *ptr) {
     if (ptr == NULL) 
         return;
     PRBTree rbtree = (PRBTree)ptr;
-    delete_node(rbtree->root);
+    delete_node(rbtree, rbtree->root);
     free(rbtree);
 }
 
@@ -453,7 +456,7 @@ int rbtree_remove(rbtree_t *ptr, void *key) {
             Color rm_color = node->color;
             bool flag_left = parent && parent->left == node;
 
-            free(node->key);
+            rbtree->destroy(node->key);
             free(node);
             if (child)
                 child->parent = parent;

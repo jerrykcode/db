@@ -27,13 +27,20 @@ typedef struct Pair {
     char *value;
 };
 
-int cmp(const void *a, const void *b) {
+static int cmp(const void *a, const void *b) {
     return strcmp(((struct Pair *)a)->key, ((struct Pair *)b)->key);
+}
+
+static void destroy(void *a) {
+    struct Pair *pair = (struct Pair *)a;
+    free(pair->key);
+    free(pair->value);
+    free(pair);
 }
 
 Map *new_map() {
     Map *map = (Map *)malloc(sizeof(Map));
-    map->rbtree = rbtree_create(cmp, sizeof(struct Pair), RBT_SHALLOW_COPY | RBT_INSERT_REPLACE);
+    map->rbtree = rbtree_create(cmp, destroy, sizeof(struct Pair), RBT_SHALLOW_COPY | RBT_INSERT_REPLACE);
 	return map;
 }
 
