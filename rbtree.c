@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 #include "rbtree.h"
 #include "stack.h"
@@ -28,6 +29,44 @@ typedef struct RBTree {
     size_t num_nodes;
 } *PRBTree;
 
+//Check if a tree is a red-black tree
+
+static bool check_red_black_r(PTNode node, size_t *p_black_num) {
+    size_t left_black_num = 0, right_black_num = 0;
+    if (node->left) {
+        if (node->color == RED && node->left->color == RED)
+            return false;        
+        if ( ! check_red_black_r(node->left, &left_black_num))
+            return false;
+    }
+    if (node->right) {
+        if (node->color == RED && node->right->color == RED)
+            return false;
+        if ( ! check_red_black_r(node->right, &right_black_num))
+            return false;
+    }
+    if (left_black_num != right_black_num)
+        return false;
+    if (p_black_num) 
+        *p_black_num = left_black_num + node->color == BLACK;
+    return true;
+}
+
+static bool check_red_black(PRBTree rbtree) {
+    if (rbtree->root == NULL)
+        return true;
+    if (rbtree->root->color == RED)
+        return false;
+    return check_red_black_r(rbtree->root, NULL);
+}
+//check end
+
+static void default_destroy(void *ptr) {
+    if (ptr == NULL)
+        return;
+    free(ptr);
+}
+
 rbtree_t *rbtree_create(int (*compare)(const void *, const void *), void (*destroy)(void *), size_t key_size, int flags) {
     PRBTree rbtree = (PRBTree)malloc(sizeof(struct RBTree));
     if (rbtree == NULL) {
@@ -35,7 +74,7 @@ rbtree_t *rbtree_create(int (*compare)(const void *, const void *), void (*destr
     }
     rbtree->root = NULL;
     rbtree->compare = compare;
-    rbtree->destroy = destroy;
+    rbtree->destroy = destroy ? destroy : default_destroy;
 	rbtree->key_size = key_size;
     rbtree->flags = flags;
     rbtree->num_nodes = 0;
@@ -47,7 +86,8 @@ static void delete_node(PRBTree rbtree, PTNode node) {
         return;
     delete_node(rbtree, node->left);
     delete_node(rbtree, node->right);
-    rbtree->destroy(node->key);
+    if (!(rbtree->flags & RBT_REFERENCE_COPY))
+        rbtree->destroy(node->key);
     free(node);
 }
 
@@ -76,7 +116,7 @@ static void left_rotate(PRBTree rbtree, PTNode node) {
     bool flag_left = parent && parent->left == node;
     PTNode k = node->right;
     node->right = k->left;
-    k->left->parent = node;
+    if (k->left) k->left->parent = node;
     k->left = node;
     node->parent = k;
     k->parent = parent;
@@ -95,7 +135,7 @@ static void right_rotate(PRBTree rbtree, PTNode node) {
     bool flag_left = parent && parent->left == node;
     PTNode k = node->left;
     node->left = k->right;
-    k->right->parent = node;
+    if (k->right) k->right->parent = node;
     k->right = node;
     node->parent = k;
     k->parent = parent;
@@ -185,11 +225,19 @@ static void rbtree_insert_fix(PRBTree rbtree, PTNode node) {
     }
 }
 
+static bool is_deep_copy(PRBTree rbtree) {
+    return 
+        (!(rbtree->flags & RBT_REFERENCE_COPY))
+            && 
+        (!(rbtree->flags & RBT_SHALLOW_COPY))
+    ;
+}
+
 int rbtree_insert(rbtree_t *ptr, void *key) {
     if (ptr == NULL)
         return EINVAL;
     PRBTree rbtree = (PRBTree)ptr;
-    if (key == NULL && (! rbtree->flags & RBT_REFERENCE_COPY))
+    if (key == NULL && is_deep_copy(rbtree))
         return EINVAL;
     PTNode node = rbtree->root;
     PTNode parent = NULL;
@@ -278,19 +326,19 @@ void *rbtree_search(rbtree_t *ptr, void *key) {
     return NULL;
 }
 
-static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
+static void rbtree_remove_fix(PRBTree rbtree, PTNode node, PTNode parent) {
     while (1) {
-        if (node == NULL)
+        if (node == NULL && parent == NULL)
             return;
-        if (node->color == RED) {
+        if (node && node->color == RED) {
             node->color = BLACK;
             return;
         }
-        PTNode parent = node->parent;
         if (parent == NULL)
             return;
-        PTNode brother = get_brother(node);
-        //node is black => brother is not null
+        //node is NULL or node is BLACK
+        PTNode brother = parent->left == node ? parent->right : parent->left;
+        //node is NULL or black => brother is not null
         if (brother->color == RED) {
             //brother is red => parent is black
             if (node == parent->left) {
@@ -319,6 +367,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
                 brother->color = BLACK;
                 parent->color  = RED;
                 left_rotate(rbtree, parent);
+                //parent no change
                 continue;
             }
             else { //node == parent->right
@@ -326,6 +375,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
                 brother->color = BLACK;
                 parent->color  = RED;
                 right_rotate(rbtree, parent);
+                //parent no change
                 continue;
             }
         }
@@ -335,6 +385,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
                 //children of brother are NOT red
                 brother->color = RED;
                 node = parent;
+                parent = node->parent;
                 continue;
             }
             else { //One of the children of brother is red
@@ -367,6 +418,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
                         brother->color = RED;
                         brother->left->color = BLACK;
                         right_rotate(rbtree, brother);
+                        //node and parent no change
                         continue;
                     }
                     else { //brother->right && brother->right->color == RED
@@ -396,6 +448,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
 
                         left_rotate(rbtree, parent);
                         brother->right->color = BLACK;
+                        //function exit, node and parent no need to change
                         break;
                     }
                 }
@@ -405,6 +458,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
                         brother->color = RED;
                         brother->right->color = BLACK;
                         left_rotate(rbtree, brother);
+                        //node and parent no change
                         continue;
                     }
                     else { //brother->left && brother->left->color == RED
@@ -415,6 +469,7 @@ static void rbtree_remove_fix(PRBTree rbtree, PTNode node) {
                         
                         right_rotate(rbtree, parent);
                         brother->left->color = BLACK;
+                        //function exit, node and parent no need to change
                         break;
                     }
                 }
@@ -427,7 +482,7 @@ int rbtree_remove(rbtree_t *ptr, void *key) {
     if (ptr == NULL)
         return EINVAL;
     PRBTree rbtree = (PRBTree)ptr;
-    if (key == NULL && (! rbtree->flags & RBT_REFERENCE_COPY))
+    if (key == NULL && is_deep_copy(rbtree)) 
         return EINVAL;
     PTNode node = rbtree->root;
     while (node) {
@@ -443,20 +498,25 @@ int rbtree_remove(rbtree_t *ptr, void *key) {
         else { //compare_res == 0
             rbtree->num_nodes--;
 
+            bool flag_replaced = false;
             if (node->left && node->right) {
                 PTNode left_max = node->left;
                 while (left_max->right)
                     left_max = left_max->right;
                 //replace key of node by left_max
-                memcpy(node->key, left_max->key, rbtree->key_size);
+                if (!(rbtree->flags & RBT_REFERENCE_COPY))
+                    rbtree->destroy(node->key);
+                node->key = left_max->key;
                 node = left_max;
+                flag_replaced = true;
             }
             PTNode parent = node->parent;
             PTNode child = node->left ? node->left : node->right;
             Color rm_color = node->color;
             bool flag_left = parent && parent->left == node;
 
-            rbtree->destroy(node->key);
+            if (!flag_replaced && !(rbtree->flags & RBT_REFERENCE_COPY))
+                rbtree->destroy(node->key);
             free(node);
             if (child)
                 child->parent = parent;
@@ -471,7 +531,7 @@ int rbtree_remove(rbtree_t *ptr, void *key) {
                 rbtree->root = child;
 
             if (rm_color == BLACK)
-                rbtree_remove_fix(rbtree, child);
+                rbtree_remove_fix(rbtree, child, parent);
 
             break;
         }        

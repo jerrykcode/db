@@ -37,7 +37,7 @@ void stack_destroy(stack_t *ptr) {
     while (node != NULL) {
         PNode tmp = node;
         node = node->pre;
-        if (stack->flags & STACK_REFERENCE_COPY)
+        if ( ! (stack->flags & STACK_REFERENCE_COPY))
             free(tmp->data);
         free(tmp);
     }
@@ -73,7 +73,10 @@ void *stack_top(stack_t *ptr) {
     if (ptr == NULL)
         return NULL;
     PStack stack = (PStack)ptr;
-    return stack->top->data;
+    if (stack->top)
+        return stack->top->data;
+    else
+        return NULL;
 }
 
 int stack_pop(stack_t *ptr) {
@@ -84,7 +87,7 @@ int stack_pop(stack_t *ptr) {
     if (node == NULL)
         return ENOTSUP;
     stack->top = node->pre;
-    if (stack->flags & STACK_REFERENCE_COPY)
+    if ( ! (stack->flags & STACK_REFERENCE_COPY))
         free(node->data);
     free(node);
     stack->size--;

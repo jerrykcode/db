@@ -17,7 +17,7 @@ clean :
 
 #test
 
-test : run_test_disk run_test_table
+test : run_test_disk run_test_map run_test_table
 	rm $(OBJS)
 	rm *.frm
 	rm *.dat	
@@ -34,6 +34,17 @@ run_test_disk : test_disk test/test_disk.file
 	rm file
 	rm test_disk.o
 	rm $<
+
+# test map
+test_map: map.o rbtree.o stack.o test_map.o
+	$(CC) $(CFLAGS) -o $@ $^
+map.o : map.c
+	$(CC) $< $(CFLAGS) -c -o $@
+test_map.o : test/test_map.c
+	$(CC) $< $(CFLAGS) -c -o $@
+
+run_test_map : test_map
+	./$<
 
 # test table
 test_table : $(OBJS) test_table.o
