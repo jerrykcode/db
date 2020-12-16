@@ -1,5 +1,5 @@
 TARGET = db
-OBJS = disk.o table.o util.o datatype.o rbtree.o stack.o
+OBJS = disk.o table.o util.o datatype.o rbtree.o stack.o map.o
 
 CC = gcc
 
@@ -38,13 +38,13 @@ run_test_disk : test_disk test/test_disk.file
 # test map
 test_map: map.o rbtree.o stack.o test_map.o
 	$(CC) $(CFLAGS) -o $@ $^
-map.o : map.c
-	$(CC) $< $(CFLAGS) -c -o $@
 test_map.o : test/test_map.c
 	$(CC) $< $(CFLAGS) -c -o $@
 
 run_test_map : test_map
 	./$<
+	rm test_map.o
+	rm $<
 
 # test table
 test_table : $(OBJS) test_table.o

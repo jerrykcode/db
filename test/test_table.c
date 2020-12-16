@@ -7,14 +7,18 @@ static char * char_pointer(const char *str) {
     return result;
 }
 
-static void map_free_all(Map *map) {
+static void map_free_all(map_t *map) {
     //free map
-    map_free(map);
+    map_destroy(map);
+}
+
+static int cmp(const void *a, const void *b){
+    return strcmp((const char *)a, (const char *)b);
 }
 
 static void insert_1(Table *table, int n) {
     for (int i = 0; i < n; i++) {
-        ColNameValueMap *map = new_map();
+        ColNameValueMap *map = map_create(cmp, MAP_KEY_SHALLOW_COPY | MAP_VALUE_SHALLOW_COPY);
         map_put(map, char_pointer("id"), char_pointer("1000001"));
         map_put(map, char_pointer("num"), char_pointer("8888"));
         table_insert(table, map);
@@ -23,7 +27,7 @@ static void insert_1(Table *table, int n) {
 }
 
 static void insert_2(Table *table) {
-    ColNameValueMap *map = new_map();
+    ColNameValueMap *map = map_create(cmp, MAP_KEY_SHALLOW_COPY | MAP_VALUE_SHALLOW_COPY);
     map_put(map, char_pointer("id"), char_pointer("1000005"));
     map_put(map, char_pointer("num"), char_pointer("8887"));
     table_insert(table, map);
@@ -31,14 +35,14 @@ static void insert_2(Table *table) {
 }
 
 static void select_1(Table *table) {
-    ColNameValueMap *example = new_map();
+    ColNameValueMap *example = map_create(cmp, MAP_KEY_SHALLOW_COPY | MAP_VALUE_SHALLOW_COPY);
     map_put(example, char_pointer("id"), char_pointer("1000001"));
     table_select(table, example);
     map_free_all(example);
 }
 
 static void select_2(Table *table) {
-    ColNameValueMap *example = new_map();
+    ColNameValueMap *example = map_create(cmp, MAP_KEY_SHALLOW_COPY | MAP_VALUE_SHALLOW_COPY);
     map_put(example, char_pointer("num"), char_pointer("8887"));
     table_select(table, example);
     map_free_all(example);
@@ -51,7 +55,7 @@ int main() {
     char *num = char_pointer("num");
     list_add(list, id);
     list_add(list, num);
-    ColNameTypeMap *map = new_map();
+    ColNameValueMap *map = map_create(cmp, MAP_KEY_REFERENCE_COPY | MAP_VALUE_SHALLOW_COPY);
     map_put(map, id, char_pointer("bigint"));
     map_put(map, num, char_pointer("int"));
     Table *table = table_create("./", "tmp_table", list, map);

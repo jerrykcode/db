@@ -98,6 +98,10 @@ Table *table_create(const char *path, const char *table_name, ColNameList *list,
     return table;
 }
 
+static function_ColNameTypeMap_compare_key(const void *a, const void *b) {
+    return strcmp((const char *)a, (const char *)b);
+}
+
 Table *table_open(const char *path, const char *table_name) {
     char *frm_pathname = get_frm_pathname(path, table_name);
     FILE *frm = fopen(frm_pathname, "r+");
@@ -115,7 +119,7 @@ Table *table_open(const char *path, const char *table_name) {
     fread(buffer, buffer_size, 1, frm);
     fclose(frm);
     ColNameList *list = new_list();
-    ColNameTypeMap *map = new_map();
+    ColNameTypeMap *map = map_create(function_ColNameTypeMap_compare_key, MAP_KEY_REFERENCE_COPY | MAP_VALUE_SHALLOW_COPY);
     size_t block_size;
     for (int i = 0; i < num_cols; i++) {
         char *name = (char *)malloc(FRM_COL_NAME_SIZE);
@@ -134,7 +138,7 @@ Table *table_open(const char *path, const char *table_name) {
         for (int i = 0; i < num_cols; i++)
             free(list_get(list, i));
         list_free(list);
-        map_free(map);
+        map_destroy(map);
         return NULL;
     }
     Table *table = (Table *)malloc(sizeof(Table));
@@ -147,9 +151,11 @@ Table *table_open(const char *path, const char *table_name) {
 void table_close(Table *table) {
     List *list = table->list;
     size_t num_cols = list_size(list);
-    Map *map = table->map;
+    map_t *map = table->map;
+    for (int i = 0; i < num_cols; i++)
+        free(list_get(list, i));
     list_free(list);
-    map_free(map);
+    map_destroy(map);
     dclose(table->data);
     free(table);
 }
@@ -193,7 +199,7 @@ static void print_row(Table *table, void *memory) {
     size_t offset = 0;
     for (int i = 0; i < list_size(table->list); i++) {
         char *col_name = list_get(table->list, i);
-        DataType *type = get_data_type(map_get(table->map, col_name));
+        DataType *type = get_data_type((char *)map_get(table->map, col_name));
         if (i) putchar(' ');
         type->print(memory + offset);    
         offset += type->get_type_size();
@@ -214,7 +220,7 @@ void table_select(Table *table, ColNameValueMap *example) {
     void *buffer = malloc(num_blocks * block_size);
     char **keys = (char **)malloc(map_size(example) * sizeof(char *));
     char **values = (char **)malloc(map_size(example) * sizeof(char *));
-    map_get_all_keys_and_values(example, keys, values);
+    map_sort(example, (void **)keys, (void **)values);
     
     while (1) {
         num_blocks_read = copy_to_memory_s(data, dp, num_blocks, buffer);
@@ -229,12 +235,12 @@ void table_select(Table *table, ColNameValueMap *example) {
             size_t offset = i * block_size;
             int flag = 1;
             for (int j = 0; j < map_size(example); j++) {
-                DataType *type = get_data_type(map_get(table->map, keys[j]));                
+                DataType *type = get_data_type((char *)map_get(table->map, keys[j]));
                 void *p_val = malloc(type->get_type_size());
                 size_t key_offset = 0;
                 for (int k = 0; k < list_size(table->list); k++) {
                     if (strcmp(list_get(table->list, k), keys[j]) == 0) break;
-                    key_offset += type_size(map_get(table->map, list_get(table->list, k)));
+                    key_offset += type_size((char *)map_get(table->map, list_get(table->list, k)));
                 }
                 memcpy(p_val, buffer + offset + key_offset, type->get_type_size());
                 void *p_example_val = type->convert_to_val(values[j]);

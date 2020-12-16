@@ -3,11 +3,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "rbtree.h"
+#include "map.h"
 
 #define ColNameList List
-#define ColNameTypeMap Map
-#define ColNameValueMap Map
 
 #define CAPACITY 1024
 
@@ -26,21 +24,4 @@ char *list_get(List *list, size_t i);
 
 void list_free(List *list);
 
-typedef struct {
-    rbtree_t *rbtree;
-} Map;
-
-Map *new_map();
-
-size_t map_size(Map *map);
-
-void map_put(Map *map, char *key, char *value);
-
-char *map_get(Map *map, const char *key);
-
-void map_get_all_keys(Map *map, char **keys);
-void map_get_all_values(Map *map, char **values);
-void map_get_all_keys_and_values(Map *map, char **keys, char **values);
-
-void map_free(Map *map);
 #endif

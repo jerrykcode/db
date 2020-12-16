@@ -8,6 +8,9 @@
 #define DATA_SUFFIX  ".dat"
 #define INDEX_SUFFIX ".idx"
 
+typedef map_t ColNameTypeMap;
+typedef map_t ColNameValueMap;
+
 typedef struct {
     ColNameList *list;
     ColNameTypeMap *map;
