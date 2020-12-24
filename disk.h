@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define BLOCK_SIZE_OFFSET 0
-typedef unsigned int disk_t;
+typedef unsigned long long disk_t;
 #define BLOCK_SIZE_SIZE sizeof(disk_t)
 #define DATA_OFFSET (BLOCK_SIZE_OFFSET + BLOCK_SIZE_SIZE)
 

@@ -37,8 +37,8 @@ in the system header file <sys/stat.h>.\n";
 	copy_to_disk(str, strlen(str), disk, dp);
 	dclose(disk);
 
-    char *file_str = (char *)malloc(disk->block_size);
     disk = dopen("./file");
+    char *file_str = (char *)malloc(disk->block_size);
     copy_to_memory(disk, dp, file_str);
     size_t len = strlen(file_str);
     dp = dalloc(disk);
