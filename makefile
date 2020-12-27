@@ -20,7 +20,8 @@ clean :
 test : run_test_disk run_test_map run_test_table
 	rm $(OBJS)
 	rm *.frm
-	rm *.dat	
+	rm *.dat
+	rm *.idx
 
 # test disk
 test_disk : $(OBJS) test_disk.o
