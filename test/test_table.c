@@ -2,7 +2,7 @@
 #include <string.h>
 
 static char * char_pointer(const char *str) {
-    char *result = (char *)malloc(strlen(str));
+    char *result = (char *)malloc(strlen(str) + 1);
     strcpy(result, str);
     return result;
 }
@@ -16,11 +16,27 @@ static int cmp(const void *a, const void *b){
     return strcmp((const char *)a, (const char *)b);
 }
 
+static char *itoa(long long i) {
+    size_t len = 0;
+    long long j = i;
+    while (j) {
+        j /= 10;
+        len++;
+    }
+    char *str = malloc((len + 1) * sizeof(char));
+    str[len] = '\0';
+    while (i) {
+        str[--len] = i % 10 + '0';
+        i /= 10;
+    }
+    return str;
+}
+
 static void insert_1(Table *table, int n) {
     for (int i = 0; i < n; i++) {
         ColNameValueMap *map = map_create(cmp, MAP_KEY_SHALLOW_COPY | MAP_VALUE_SHALLOW_COPY);
-        map_put(map, char_pointer("id"), char_pointer("1000001"));
-        map_put(map, char_pointer("num"), char_pointer("8888"));
+        map_put(map, char_pointer("id"), itoa(1000001 + i));
+        map_put(map, char_pointer("num"), itoa(8888 + i));
         table_insert(table, map);
         map_free_all(map);
     }

@@ -118,12 +118,10 @@ int copy_to_memory(DISK *disk, disk_pointer src, void *des) {
 
 int copy_to_disk(void *src, size_t size, DISK *disk, disk_pointer des) {
 	FILE *file = disk->file;
-	long fp_save = ftell(file);
 	long offset = des;
 	fseek(file, offset, SEEK_SET);
 	if (size > disk->block_size) size = disk->block_size;
 	size_t num_blocks_wrote = fwrite(src, size, 1, file);
-	fseek(file, fp_save, SEEK_SET);
 	if (num_blocks_wrote != 1) {
 		return -1;
 	}

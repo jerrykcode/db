@@ -8,7 +8,8 @@ static char *get_data_pathname(const char *path, const char *table_name) {
     size_t path_len = strlen(path);
     size_t table_name_len = strlen(table_name);
     size_t data_suffix_len = strlen(DATA_SUFFIX);
-    char *data_pathname = (char *)malloc(path_len + table_name_len + data_suffix_len);
+    size_t EOF_SIZE = 1; //space for '\0'
+    char *data_pathname = (char *)malloc(path_len + table_name_len + data_suffix_len + EOF_SIZE);
     strcpy(data_pathname, path);
     strcpy(data_pathname + path_len, table_name);
     strcpy(data_pathname + path_len + table_name_len, DATA_SUFFIX);
@@ -19,7 +20,8 @@ static char *get_frm_pathname(const char *path, const char *table_name) {
     size_t path_len = strlen(path);
     size_t table_name_len = strlen(table_name);
     size_t frm_suffix_len = strlen(FRAME_SUFFIX);
-    char *frm_pathname = (char *)malloc(path_len + table_name_len + frm_suffix_len);
+    size_t EOF_SIZE = 1; //space for '\0'
+    char *frm_pathname = (char *)malloc(path_len + table_name_len + frm_suffix_len + EOF_SIZE);
     strcpy(frm_pathname, path);
     strcpy(frm_pathname + path_len, table_name);
     strcpy(frm_pathname + path_len + table_name_len, FRAME_SUFFIX);
@@ -73,7 +75,7 @@ Table *table_create(const char *path, const char *table_name, ColNameList *list,
     map_t *index2btree = map_create(function_ColNameTypeMap_compare_key, MAP_KEY_REFERENCE_COPY | MAP_VALUE_REFERENCE_COPY);
     for (int i = 0; i < list_size(indices); i++) {
         char *col_name = list_get(indices, i);
-        map_put(index2btree, col_name, btree_create(path, table_name, col_name, get_data_type(map_get(map, col_name))->compare));
+        map_put(index2btree, col_name, btree_create(path, table_name, col_name, get_data_type(map_get(map, col_name))));
     }
 
     size_t buffer_size, block_size;
@@ -147,7 +149,7 @@ Table *table_open(const char *path, const char *table_name) {
         u_int8_t flag_is_index;
         memcpy(&flag_is_index, buffer + FRM_COL_INDEX_FLAG_OFFSET(i), FRM_COL_INDEX_FLAG_SIZE);
         if (flag_is_index)
-            map_put(index2btree, name, btree_open(path, table_name, name, get_data_type(type)->compare));
+            map_put(index2btree, name, btree_open(path, table_name, name, get_data_type(type)));
     } 
     free(buffer);
     char *data_pathname = get_data_pathname(path, table_name);
@@ -164,6 +166,7 @@ Table *table_open(const char *path, const char *table_name) {
     Table *table = (Table *)malloc(sizeof(Table));
     table->map = map;
     table->list = list;
+    table->index2btree = index2btree;
     table->data = data;
     return table;
 }
@@ -227,8 +230,10 @@ void table_insert(Table *table, ColNameValueMap *map) {
     PBTree *btrees = (PBTree *)malloc(num_indices * sizeof(PBTree));
     char **names = (char **)malloc(num_indices * sizeof(char *));    
     map_sort(index2btree, names, btrees); 
-    for (int i = 0; i < map_size(index2btree); i++)
-        btree_insert(btrees[i], map_get(map, names[i]), dp);
+    for (int i = 0; i < map_size(index2btree); i++) {
+        void *key = get_data_type(map_get(table->map, names[i]))->convert_to_val(map_get(map, names[i]));
+        btree_insert(btrees[i], key, dp);
+    }
     free(btrees);
     free(names);
 }
