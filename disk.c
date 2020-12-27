@@ -80,6 +80,25 @@ disk_pointer dalloc(DISK *disk) {
 	return dp;
 }
 
+int dalloc_first_block(DISK *disk) {
+    FILE *file = disk->file;
+    long fp_save = ftell(file); //save the file position when this function begin
+    fseek(file, 0, SEEK_END);
+    if ((disk_pointer)ftell(file) == data_start_pos()) {
+    	fseek(file, disk->block_size, SEEK_END); //alloc new space
+        fseek(file, fp_save, SEEK_SET); //set the file position back
+        return 0; 
+    }
+    else {
+        fseek(file, fp_save, SEEK_SET); //set the file position back
+        return EINVAL;
+    }
+}
+
+disk_pointer first_block(DISK *disk) {
+    return data_start_pos(); 
+}
+
 int copy_to_memory_s(DISK *disk, disk_pointer src, size_t num_blocks, void *des) {
     FILE *file = disk->file;
     long fp_save = ftell(file);
@@ -110,5 +129,3 @@ int copy_to_disk(void *src, size_t size, DISK *disk, disk_pointer des) {
 	}
 	return 1;
 }
-
-

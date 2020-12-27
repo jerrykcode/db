@@ -30,6 +30,12 @@ disk_pointer data_start_pos();
 /* Allocs disk space of one block_size and returns the pointer of the space. */
 disk_pointer dalloc(DISK *disk);
 
+/* Alloc the first block of disk space. Returns 0 if success. */
+int dalloc_first_block(DISK *disk);
+
+/* Returns the first block of disk data space. */
+disk_pointer first_block(DISK *disk);
+
 /* Copies data of several block_sizes from disk area 'src' to memory area 'des'.
    The number of block_sizes is indicated by the parameter 'num_blocks'. 
    If there are no 'num_blocks' blocks of data left in the disk, then only 

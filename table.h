@@ -14,10 +14,11 @@ typedef map_t ColNameValueMap;
 typedef struct {
     ColNameList *list;
     ColNameTypeMap *map;
+    map_t *index2btree;
     DISK *data;
 } Table;
 
-Table *table_create(const char *path, const char *table_name, ColNameList *list, ColNameTypeMap *map);
+Table *table_create(const char *path, const char *table_name, ColNameList *list, List *indices, ColNameTypeMap *map);
 Table *table_open(const char *path, const char *table_name);
 void table_close(Table *table);
 

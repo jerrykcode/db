@@ -1,6 +1,7 @@
 #include "table.h"
 #include "datatype.h"
 #include "frame.h"
+#include "btree.h"
 #include <errno.h>
 
 static char *get_data_pathname(const char *path, const char *table_name) {
@@ -25,7 +26,7 @@ static char *get_frm_pathname(const char *path, const char *table_name) {
     return frm_pathname;
 }
 
-static void *cpy_to_buffer(const char *table_name, ColNameList *list, ColNameTypeMap *map, size_t *p_buffersize, size_t *p_blocksize) {
+static void *cpy_to_buffer(const char *table_name, ColNameList *list, map_t *index2btree, ColNameTypeMap *map, size_t *p_buffersize, size_t *p_blocksize) {
     size_t table_name_size = strlen(table_name);
     if (table_name_size > FRM_TABLE_NAME_SIZE) {
         fprintf(stderr, "Table name:\'%s\' too long", table_name);
@@ -51,15 +52,32 @@ static void *cpy_to_buffer(const char *table_name, ColNameList *list, ColNameTyp
         }
         memcpy(buffer + FRM_COL_NAME_OFFSET(i), name, name_size);
         memcpy(buffer + FRM_COL_TYPE_OFFSET(i), type, strlen(type));
+        u_int8_t flag_is_index;
+        if (map_has_key(index2btree, name))
+            flag_is_index = 1;
+        else
+            flag_is_index = 0;
+        memcpy(buffer + FRM_COL_INDEX_FLAG_OFFSET(i), &flag_is_index, sizeof(flag_is_index));
+         
         *p_blocksize += type_size(type);
     }
     return buffer;
 }
 
-Table *table_create(const char *path, const char *table_name, ColNameList *list, ColNameTypeMap *map) {
+static function_ColNameTypeMap_compare_key(const void *a, const void *b) {
+    return strcmp((const char *)a, (const char *)b);
+}
+
+Table *table_create(const char *path, const char *table_name, ColNameList *list, List *indices, ColNameTypeMap *map) {
+    
+    map_t *index2btree = map_create(function_ColNameTypeMap_compare_key, MAP_KEY_REFERENCE_COPY | MAP_VALUE_REFERENCE_COPY);
+    for (int i = 0; i < list_size(indices); i++) {
+        char *col_name = list_get(indices, i);
+        map_put(index2btree, col_name, btree_create(path, table_name, col_name, get_data_type(map_get(map, col_name))->compare));
+    }
 
     size_t buffer_size, block_size;
-    void *buffer = cpy_to_buffer(table_name, list, map, &buffer_size, &block_size);
+    void *buffer = cpy_to_buffer(table_name, list, index2btree, map, &buffer_size, &block_size);
     if (buffer == NULL) {
         return NULL;
     }
@@ -93,13 +111,10 @@ Table *table_create(const char *path, const char *table_name, ColNameList *list,
     Table *table = (Table *)malloc(sizeof(Table));
     table->map = map;
     table->list = list;
+    table->index2btree = index2btree;
     table->data = data;
 
     return table;
-}
-
-static function_ColNameTypeMap_compare_key(const void *a, const void *b) {
-    return strcmp((const char *)a, (const char *)b);
 }
 
 Table *table_open(const char *path, const char *table_name) {
@@ -120,6 +135,7 @@ Table *table_open(const char *path, const char *table_name) {
     fclose(frm);
     ColNameList *list = new_list();
     ColNameTypeMap *map = map_create(function_ColNameTypeMap_compare_key, MAP_KEY_REFERENCE_COPY | MAP_VALUE_SHALLOW_COPY);
+    map_t *index2btree = map_create(function_ColNameTypeMap_compare_key, MAP_KEY_REFERENCE_COPY | MAP_VALUE_REFERENCE_COPY);
     size_t block_size;
     for (int i = 0; i < num_cols; i++) {
         char *name = (char *)malloc(FRM_COL_NAME_SIZE);
@@ -128,6 +144,10 @@ Table *table_open(const char *path, const char *table_name) {
         char *type = (char *)malloc(FRM_COL_TYPE_SIZE);
         memcpy(type, buffer + FRM_COL_TYPE_OFFSET(i), FRM_COL_TYPE_SIZE);
         map_put(map, name, type);
+        u_int8_t flag_is_index;
+        memcpy(&flag_is_index, buffer + FRM_COL_INDEX_FLAG_OFFSET(i), FRM_COL_INDEX_FLAG_SIZE);
+        if (flag_is_index)
+            map_put(index2btree, name, btree_open(path, table_name, name, get_data_type(type)->compare));
     } 
     free(buffer);
     char *data_pathname = get_data_pathname(path, table_name);
@@ -156,6 +176,13 @@ void table_close(Table *table) {
         free(list_get(list, i));
     list_free(list);
     map_destroy(map);
+    map_t *index2btree = table->index2btree;
+    PBTree *btrees = (PBTree *)malloc(map_size(index2btree) * sizeof(PBTree));
+    map_sort(index2btree, NULL, btrees); //replace by map iterator later
+    for (int i = 0; i < map_size(index2btree); i++)
+        btree_close(btrees[i]);
+    free(btrees);
+    map_destroy(index2btree);
     dclose(table->data);
     free(table);
 }
@@ -192,7 +219,18 @@ void table_insert(Table *table, ColNameValueMap *map) {
     disk_pointer dp = dalloc(table->data);
     copy_to_disk(memory, offset, table->data, dp);
     free(memory);
-    //col for index and dp will insert into a btree later
+    
+
+    //replace by map iterator later
+    map_t *index2btree = table->index2btree;
+    size_t num_indices = map_size(index2btree);
+    PBTree *btrees = (PBTree *)malloc(num_indices * sizeof(PBTree));
+    char **names = (char **)malloc(num_indices * sizeof(char *));    
+    map_sort(index2btree, names, btrees); 
+    for (int i = 0; i < map_size(index2btree); i++)
+        btree_insert(btrees[i], map_get(map, names[i]), dp);
+    free(btrees);
+    free(names);
 }
 
 static void print_row(Table *table, void *memory) {

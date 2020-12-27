@@ -58,7 +58,12 @@ int main() {
     ColNameValueMap *map = map_create(cmp, MAP_KEY_REFERENCE_COPY | MAP_VALUE_SHALLOW_COPY);
     map_put(map, id, char_pointer("bigint"));
     map_put(map, num, char_pointer("int"));
-    Table *table = table_create("./", "tmp_table", list, map);
+
+    List *indices = new_list();
+    list_add(indices, id);
+    list_add(indices, num);
+    
+    Table *table = table_create("./", "tmp_table", list, indices, map);
     insert_1(table, 1);
     table_close(table);
     table = table_open("./", "tmp_table");
