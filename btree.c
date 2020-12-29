@@ -221,19 +221,13 @@ static struct Split_res *btree_insert_re(PBTree btree, disk_pointer disk_node, v
             else {
                 tmp_pointer = dalloc(disk); //Allocs another disk space
                 copy_to_disk(node, disk->block_size, disk, tmp_pointer);
-                node = node_create(key_type_size); //Allocs new memory, the original 'node' will be free by free(buffer) at END
-                if (node == NULL) {
-                    errno = ENOMEM;
-                    free(res);
-                    goto ERR;
-                }
+                //set node as root
                 node->flag_is_leaf = false;
                 node->num = 1;
                 node->pointers[0] = tmp_pointer;
                 memcpy(node->key_data, res->key, key_type_size);
                 node->last_pointer = res->pointer;
                 copy_to_disk(node, disk->block_size, disk, btree->root); //btree->root remains unchanged
-                free(node);
                 free(res);
                 res = NULL;
             }
@@ -279,19 +273,13 @@ static struct Split_res *btree_insert_re(PBTree btree, disk_pointer disk_node, v
                 else {
                     tmp_pointer = dalloc(disk); //Allocs another disk space
                     copy_to_disk(node, disk->block_size, disk, tmp_pointer);
-                    node = node_create(key_type_size); //Allocs new memory, the original 'node' will be free by free(buffer) at END
-                    if (node == NULL) {
-                        errno = ENOMEM;
-                        free(res);
-                        goto ERR;
-                    }
+                    //set node as root
                     node->flag_is_leaf = false;
                     node->num = 1;
                     node->pointers[0] = tmp_pointer;
                     memcpy(node->key_data ,res->key, key_type_size);
                     node->last_pointer = res->pointer; 
                     copy_to_disk(node, disk->block_size, disk, btree->root); //btree->root remains unchanged
-                    free(node);
                     free(res);
                     res = NULL;
                 }

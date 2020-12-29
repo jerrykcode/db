@@ -250,7 +250,7 @@ static void print_row(Table *table, void *memory) {
     printf("\n");
 }
 
-void table_select(Table *table, ColNameValueMap *example) {
+static void table_select_noindex(Table *table, ColNameValueMap *example) {
     DISK *data = table->data;
     size_t block_size = data->block_size;
     disk_pointer dp = data_start_pos();
@@ -308,4 +308,21 @@ void table_select(Table *table, ColNameValueMap *example) {
     free(buffer);
     free(keys);
     free(values);
+}
+
+void table_select(Table *table, ColNameValueMap *example) {
+    //Just a simple test for btree
+    //Improve this function later
+    char **keys = (char **)malloc(map_size(example) * sizeof(char *));
+    char **values = (char **)malloc(map_size(example) * sizeof(char *));
+    map_sort(example, (void **)keys, (void **)values);
+    
+    void *ek = get_data_type(map_get(table->map, keys[0]))->convert_to_val(values[0]);
+    disk_pointer dp = btree_select(map_get(table->index2btree, keys[0]), ek);
+    free(ek);
+    DISK *data = table->data;
+    void *buffer = malloc(data->block_size);
+    copy_to_memory(data, dp, buffer);
+    print_row(table, buffer);
+    free(buffer);
 }
