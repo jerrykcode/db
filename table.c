@@ -318,11 +318,13 @@ void table_select(Table *table, ColNameValueMap *example) {
     map_sort(example, (void **)keys, (void **)values);
     
     void *ek = get_data_type(map_get(table->map, keys[0]))->convert_to_val(values[0]);
-    disk_pointer dp = btree_select(map_get(table->index2btree, keys[0]), ek);
+    vector_t *dps = btree_select(map_get(table->index2btree, keys[0]), ek, ek);
     free(ek);
     DISK *data = table->data;
     void *buffer = malloc(data->block_size);
-    copy_to_memory(data, dp, buffer);
-    print_row(table, buffer);
+    for (int i = 0; i < vector_size(dps); i++) {
+        copy_to_memory(data, *(disk_pointer *)vector_get(dps, i), buffer);
+        print_row(table, buffer);
+    }
     free(buffer);
 }

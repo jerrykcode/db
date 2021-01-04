@@ -33,10 +33,11 @@ static char *itoa(long long i) {
 }
 
 static void insert_1(Table *table, int n) {
-    for (int i = 0; i < n; i++) {
+    static int j = 0;
+    for (int i = 0; i < n; i++, j++) {        
         ColNameValueMap *map = map_create(cmp, MAP_KEY_SHALLOW_COPY | MAP_VALUE_SHALLOW_COPY);
         map_put(map, char_pointer("id"), itoa(1000001 + i));
-        map_put(map, char_pointer("num"), itoa(8888 + i));
+        map_put(map, char_pointer("num"), itoa(8888 + j));
         table_insert(table, map);
         map_free_all(map);
     }
@@ -89,7 +90,8 @@ int main() {
     }
     select_1(table); //10 items with id = 1000001
     select_2(table); //9 items with num = 8887
-    insert_1(table, 10240);
+//    insert_1(table, 1024004);
+    insert_1(table, 1024);
     insert_2(table);
     insert_1(table, 1024);
     select_2(table); //10 items with num = 8887
