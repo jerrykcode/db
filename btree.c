@@ -102,21 +102,26 @@ void btree_close(PBTree btree) {
 }
 
 static PNode cell_insert(PNode node, int pos, disk_pointer pointer, void *key, size_t key_type_size) {
-    int key_pos = node->flag_is_leaf ? pos : pos + 1;//non-leaf node have one more key at the begin
     if (node->num < NODE_MAX_DEGREE) {
         if (pos <= node->num - 1) {
             //make room for pointer and key
             memmove(&node->pointers[pos + 1], &node->pointers[pos], (node->num - pos) * sizeof(disk_pointer));
-            memmove(node->key_data + (key_pos + 1) * key_type_size, node->key_data + key_pos * key_type_size, (node->num - pos) * key_type_size);
+            memmove(node->key_data + (pos + 1) * key_type_size, node->key_data + pos * key_type_size, (node->num - pos) * key_type_size);
         }
-        //insert pointer and key
-        node->pointers[pos] = pointer;
+        //insert pointer
+        if (node->flag_is_leaf || pos <= node->num - 1)
+            node->pointers[pos] = pointer;
+        else {
+            node->pointers[node->num] = node->last_pointer;
+            node->last_pointer = pointer;
+        }
+        //insert key
         if (key != NULL) {
-            memcpy(node->key_data + key_pos * key_type_size, key, key_type_size);
-            node->opt[key_pos] = 0;
+            memcpy(node->key_data + pos * key_type_size, key, key_type_size);
+            node->opt[pos] = 0;
         }
         else
-            node->opt[key_pos] = EMPTY_KEY;
+            node->opt[pos] = EMPTY_KEY;
         node->num++;
         return NULL;
     }
@@ -131,64 +136,55 @@ static PNode cell_insert(PNode node, int pos, disk_pointer pointer, void *key, s
     node->num = num / 2 + 1; //node->num decrease => remove cells
     split->num = num - node->num;
     int split_start = node->num;
+    split->last_pointer = node->last_pointer; //copy last_pointer
     if (pos < node->num) {
         //copy to split
         memcpy(split->pointers, &node->pointers[split_start], (num - split_start) * sizeof(disk_pointer));
         /*
         Non-leaf node have one more key at the begin
-            if (node->flag_is_leaf) 
-                memcpy(split->key_data, node->key_data + split_start * key_type_size, (num - split_start) * key_type_size);
-            else {
-                memcpy(split->key_data, node->key_data + split_start * key_type_size, key_type_size);
-                memcpy(split->key_data + key_type_size, node->key_data + (split_start + 1) * key_type_size, (num - split_start) * key_type_size);
-            }
-        Equivalents to following one-line code:
         */
         memcpy(split->key_data, node->key_data + split_start * key_type_size, (num - split_start + (node->flag_is_leaf ? 0 : 1)) * key_type_size);
         //make room for key in node
         memmove(&node->pointers[pos + 1], &node->pointers[pos], (node->num - pos) * sizeof(disk_pointer));
-        memmove(node->key_data + (key_pos + 1) * key_type_size, node->key_data + key_pos * key_type_size, (node->num - pos) * key_type_size);
+        memmove(node->key_data + (pos + 1) * key_type_size, node->key_data + pos * key_type_size, (node->num - pos) * key_type_size);
         //insert pointer and key into node
         node->pointers[pos] = pointer;
         if (key != NULL) {
-            memcpy(node->key_data + key_pos * key_type_size, key, key_type_size);
-            node->opt[key_pos] = 0;
+            memcpy(node->key_data + pos * key_type_size, key, key_type_size);
+            node->opt[pos] = 0;
         }
         else
-            node->opt[key_pos] = EMPTY_KEY;
+            node->opt[pos] = EMPTY_KEY;
         node->num++;
     }
     else {
         if (pos > split_start) {
             //copy from [split_start, pos) of node to split
             memcpy(split->pointers, &node->pointers[split_start], (pos - split_start) * sizeof(disk_pointer));
-            /*
-            Non-leaf node have one more key at the begin. 
-                if (node->flag_is_leaf)
-                    memcpy(split->key_data, node->key_data + split_start * key_type_size, (pos - split_start) * key_type_size);
-                else {
-                    memcpy(split->key_data, node->key_data + split_start * key_type_size, key_type_size);
-                    memcpy(split->key_data + key_type_size, node->key_data + (split_start + 1) * key_type_size, (pos - split_start) * key_type_size);                
-                }
-            Equivalents to following one-line code (recall that key_pos equals to pos + 1 if node is non-leaf node):
-            */
-            memcpy(split->key_data, node->key_data + split_start * key_type_size, (key_pos - split_start) * key_type_size);
+            memcpy(split->key_data, node->key_data + split_start * key_type_size, (pos - split_start) * key_type_size);
         }
         //insert pointer and key into split
-        split->pointers[pos - split_start] = pointer;
+        if (node->flag_is_leaf || pos < num)
+            split->pointers[pos - split_start] = pointer;
+        else {
+            split->pointers[pos - split_start] = split->last_pointer;
+            split->last_pointer = pointer;
+        }
         if (key != NULL) {
-            memcpy(split->key_data + (key_pos - split_start) * key_type_size, key, key_type_size);
-            split->opt[key_pos - split_start] = 0;
+            memcpy(split->key_data + (pos - split_start) * key_type_size, key, key_type_size);
+            split->opt[pos - split_start] = 0;
         }
         else
-            split->opt[key_pos - split_start] = EMPTY_KEY;
+            split->opt[pos - split_start] = EMPTY_KEY;
         //copy the rest to split
         memcpy(&split->pointers[pos - split_start + 1], &node->pointers[pos], (num - pos) * sizeof(disk_pointer));
-        memcpy(split->key_data + (key_pos - split_start + 1) * key_type_size, node->key_data + key_pos * key_type_size, (num - pos) * key_type_size);
+        /*
+        Non-leaf node have one more key at the begin
+        */ 
+        memcpy(split->key_data + (pos - split_start + 1) * key_type_size, node->key_data + pos * key_type_size, (num - pos + (node->flag_is_leaf ? 0 : 1)) * key_type_size);
         
         split->num++;
     }
-    split->last_pointer = node->last_pointer; //copy last_pointer
     return split;
 }
 
@@ -218,6 +214,7 @@ static void *first_nonempty_key(PNode node, size_t key_type_size) {
     for (int i = 0; i <= node->num; i++) 
         if (! (node->opt[i] & EMPTY_KEY))
             return node->key_data + i * key_type_size;
+    return NULL;
 }
 
 //insert recursively
@@ -321,15 +318,7 @@ static struct Split_res *btree_insert_re(PBTree btree, disk_pointer disk_node, v
         if (errno)
             goto ERR;
         if (res) {
-            if (pos < node->num) {
-                tmp_pointer = node->pointers[pos];
-                node->pointers[pos] = res->pointer;
-            }
-            else {
-                tmp_pointer = node->last_pointer;
-                node->last_pointer = res->pointer;
-            }
-            split = cell_insert(node, pos, tmp_pointer, res->key, key_type_size);
+            split = cell_insert(node, pos + 1, res->pointer, res->key, key_type_size);
             if (errno)
                 goto ERR;
             if (split == NULL) {
